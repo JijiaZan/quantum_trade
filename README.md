@@ -21,6 +21,7 @@ scripts/
   fetch_stock_daily.py
   fetch_sector_daily.py
   fetch_sector_members.py
+  duck_sql.py
   init_db.py
 data/
   raw/
@@ -120,7 +121,7 @@ import duckdb
 
 print(duckdb.sql("""
     SELECT trade_date, count(*) AS rows
-    FROM read_parquet('data/raw/stock_daily/**/*.parquet', hive_partitioning = true)
+    FROM read_parquet('data/raw/stock_daily/trade_date=*/part.parquet', hive_partitioning = true)
     GROUP BY trade_date
     ORDER BY trade_date
 """).df())
@@ -162,8 +163,76 @@ Or directly query Parquet without creating a database file:
 
 ```sql
 SELECT *
-FROM read_parquet('data/raw/stock_daily/**/*.parquet', union_by_name = true, hive_partitioning = true)
+FROM read_parquet('data/raw/stock_daily/trade_date=*/part.parquet', union_by_name = true, hive_partitioning = true)
 LIMIT 10;
+```
+
+## Run DuckDB SQL conveniently
+
+Use `scripts/duck_sql.py` to query local Parquet data with SQL. It automatically registers these views:
+
+```text
+stock_daily
+sector_daily
+sector_members
+```
+
+By default this helper uses an in-memory DuckDB connection, so repeated one-off queries will not fight over `db/quant.duckdb` file locks. If you want a persistent DuckDB file, pass `--db db/quant.duckdb`.
+
+Run one SQL command:
+
+```bash
+python scripts/duck_sql.py -c "SELECT * FROM stock_daily LIMIT 20"
+```
+
+Count rows by trade date:
+
+```bash
+python scripts/duck_sql.py -c "
+SELECT trade_date, count(*) AS rows
+FROM stock_daily
+GROUP BY trade_date
+ORDER BY trade_date
+"
+```
+
+Find the strongest intraday movers from the current stock daily fields:
+
+```bash
+python scripts/duck_sql.py -c "
+SELECT
+  trade_date,
+  symbol,
+  name,
+  open,
+  close,
+  round((close - open) / open * 100, 2) AS intraday_pct_chg,
+  amount
+FROM stock_daily
+WHERE trade_date = '20260522'
+ORDER BY intraday_pct_chg DESC
+LIMIT 20
+"
+```
+
+Run a `.sql` file:
+
+```bash
+python scripts/duck_sql.py -f queries/top_movers.sql
+```
+
+Enter an interactive shell:
+
+```bash
+python scripts/duck_sql.py
+```
+
+Interactive shell helpers:
+
+```text
+.tables
+.schema stock_daily
+.quit
 ```
 
 ## Notes

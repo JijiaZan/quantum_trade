@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import duckdb
+import glob
 import sys
 from pathlib import Path
 
@@ -12,9 +13,9 @@ from quantum_trade.paths import DB_DIR, RAW_DIR
 DB_PATH = DB_DIR / "quant.duckdb"
 
 VIEWS = {
-    "stock_daily": RAW_DIR / "stock_daily" / "**" / "*.parquet",
-    "sector_daily": RAW_DIR / "sector_daily" / "**" / "*.parquet",
-    "sector_members": RAW_DIR / "sector_members" / "**" / "*.parquet",
+    "stock_daily": RAW_DIR / "stock_daily" / "trade_date=*" / "part.parquet",
+    "sector_daily": RAW_DIR / "sector_daily" / "trade_date=*" / "part.parquet",
+    "sector_members": RAW_DIR / "sector_members" / "trade_date=*" / "part.parquet",
 }
 
 
@@ -23,6 +24,16 @@ def main() -> None:
     conn = duckdb.connect(str(DB_PATH))
 
     for view_name, parquet_glob in VIEWS.items():
+        if not glob.glob(str(parquet_glob)):
+            conn.execute(
+                f"""
+                CREATE OR REPLACE VIEW {view_name} AS
+                SELECT CAST(NULL AS VARCHAR) AS trade_date
+                WHERE false
+                """
+            )
+            continue
+
         conn.execute(
             f"""
             CREATE OR REPLACE VIEW {view_name} AS
