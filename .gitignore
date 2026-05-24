@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Local data and database artifacts
+data/raw/**
+data/processed/**
+!data/raw/.gitkeep
+!data/raw/stock_daily/.gitkeep
+!data/raw/sector_daily/.gitkeep
+!data/raw/sector_members/.gitkeep
+!data/processed/.gitkeep
+!data/processed/factor/.gitkeep
+!data/processed/universe/.gitkeep
+db/*.duckdb
+db/*.duckdb.wal
+logs/*.log
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
